@@ -1,0 +1,7 @@
+*clash*
+__pycache__/
+*.pyc
+data/
+cache/
+outputs/
+*.zip
