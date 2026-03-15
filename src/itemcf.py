@@ -22,9 +22,9 @@ MATRIX_WEIGHT_PRESETS = {
     "target_aware": {
         "cart_order": {
             "pair_weights": {
-                (1, 1): 1.2,
+                (1, 1): 2.4,
                 (1, 2): 2.4,
-                (2, 1): 1.4,
+                (2, 1): 2.0,
                 (2, 2): 2.8,
             },
             "backward_scale": 0.45,
@@ -105,7 +105,7 @@ MATRIX_WEIGHT_PRESETS = {
 TARGET_MATRIX_WEIGHTS = {
     "target_aware": {
         "clicks": {"cart_order": 0.0, "click_buy": 0.25, "click_cart_order": 0.75},
-        "carts": {"cart_order": 0.45, "click_buy": 0.35, "click_cart_order": 0.20},
+        "carts": {"cart_order": 0.60, "click_buy": 0.30, "click_cart_order": 0.10},
         "orders": {"cart_order": 0.60, "click_buy": 0.25, "click_cart_order": 0.15},
     },
     "one_hot": {
@@ -484,14 +484,16 @@ def build_candidates(
     target: str,
     candidate_limit: int = 60,
 ) -> Tuple[List[int], Dict[int, float], Dict[int, float], Dict[int, int]]:
+    target_candidate_limit = 100 if target == "carts" else candidate_limit
     if not events:
-        candidates = list(fallback[:candidate_limit])
+        candidates = list(fallback[:target_candidate_limit])
         return candidates, {}, {}, {}
 
     recent = unique_recent_events(events, limit=20)
     history_recent = [aid for aid, _, _ in recent]
     matrices = covis.matrices
     matrix_weights = covis.target_matrix_weights[target]
+    source_recent = recent[:10] if target == "carts" else recent[:5]
 
     score_sum: Dict[int, float] = Counter()
     score_max: Dict[int, float] = {}
@@ -503,7 +505,7 @@ def build_candidates(
         score_max[aid] = max(score_max.get(aid, 0.0), history_score)
         best_rank[aid] = min(best_rank.get(aid, 10**9), idx + 1)
 
-    for src_idx, (src_aid, _, src_type) in enumerate(recent[:5]):
+    for src_idx, (src_aid, _, src_type) in enumerate(source_recent):
         src_decay = EVENT_TYPE_WEIGHTS[src_type] / float(src_idx + 1)
         for matrix_name, matrix_weight in matrix_weights.items():
             if matrix_weight <= 0.0:
@@ -524,7 +526,7 @@ def build_candidates(
             continue
         seen.add(aid)
         deduped.append(aid)
-        if len(deduped) >= candidate_limit:
+        if len(deduped) >= target_candidate_limit:
             break
     return deduped, dict(score_sum), score_max, best_rank
 

@@ -72,7 +72,8 @@ class PredictionModel:
 
     def predict_scores(self, feature_matrix: np.ndarray) -> np.ndarray:
         if self.backend == "lightgbm":
-            return self.predictor.predict_proba(feature_matrix)[:, 1]
+            scores = self.predictor.booster_.predict(feature_matrix)
+            return np.asarray(scores, dtype=np.float32).reshape(-1)
         if self.backend == "tl2cgen":
             import tl2cgen
 

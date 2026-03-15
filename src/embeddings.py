@@ -176,7 +176,9 @@ def _train_w2v_vectors(
         negative=10,
         min_count=1,
         epochs=W2V_EPOCHS,
-        workers=max(1, num_threads),
+        # gensim 4.4 on Python 3.12 can emit ignored teardown errors from the
+        # threaded inner loop; keep W2V single-threaded for stability.
+        workers=1,
         seed=seed,
     )
     vectors: Dict[int, np.ndarray] = {}
