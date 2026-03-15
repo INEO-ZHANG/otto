@@ -4,7 +4,6 @@ import csv
 import json
 import os
 import random
-import zipfile
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -71,7 +70,6 @@ class PopularityArtifacts:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Simple OTTO itemCF + LightGBM baseline")
-    parser.add_argument("--data-zip", type=Path, required=True, help="Path to official otto zip file")
     parser.add_argument(
         "--mode",
         choices=("cv", "submit", "both"),
@@ -99,23 +97,15 @@ def ensure_dirs(base_dir: Path) -> Tuple[Path, Path, Path]:
     return raw_dir, cache_dir, output_dir
 
 
-def extract_raw_files(zip_path: Path, raw_dir: Path) -> Dict[str, Path]:
+def resolve_raw_files(raw_dir: Path) -> Dict[str, Path]:
     required = {
         "train": raw_dir / "train.jsonl",
         "test": raw_dir / "test.jsonl",
-        "sample_submission": raw_dir / "sample_submission.csv",
     }
-    missing = [name for name, path in required.items() if not path.exists()]
-    if not missing:
-        return required
-
-    print(f"[extract] extracting {zip_path} to {raw_dir}")
-    with zipfile.ZipFile(zip_path) as archive:
-        for member in ("train.jsonl", "test.jsonl", "sample_submission.csv"):
-            target = raw_dir / member
-            if target.exists():
-                continue
-            archive.extract(member, raw_dir)
+    missing = [str(path) for path in required.values() if not path.exists()]
+    if missing:
+        joined = ", ".join(missing)
+        raise FileNotFoundError(f"missing raw OTTO files: {joined}")
     return required
 
 
@@ -755,7 +745,7 @@ def main() -> None:
     args = parse_args()
     base_dir = Path.cwd()
     raw_dir, _, output_dir = ensure_dirs(base_dir)
-    extracted = extract_raw_files(args.data_zip, raw_dir)
+    extracted = resolve_raw_files(raw_dir)
     train_path = extracted["train"]
     test_path = extracted["test"]
 

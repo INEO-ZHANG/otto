@@ -5,3 +5,4 @@ data/
 cache/
 outputs/
 *.zip
+catboost_info
